@@ -99,6 +99,8 @@ object AudioLanguageOption {
     const val DEFAULT = "default"
     const val DEVICE = "device"
     const val ORIGINAL = "original"
+    const val FP_AUTO = "fpauto" // Fusion Pass: English, Japanese for anime
+    const val FP_AUTO_LABEL = "Auto (English, Japanese for anime)"
 }
 
 object SubtitleLanguageOption {
@@ -460,6 +462,7 @@ fun languageLabelForCode(code: String?): String = when {
         stringResource(Res.string.settings_playback_option_none)
     code.equals(SubtitleLanguageOption.FORCED, ignoreCase = true) ->
         stringResource(Res.string.settings_playback_option_forced)
+    code.equals(AudioLanguageOption.FP_AUTO, ignoreCase = true) -> AudioLanguageOption.FP_AUTO_LABEL // Fusion Pass
     code.equals(AudioLanguageOption.DEFAULT, ignoreCase = true) ->
         stringResource(Res.string.settings_playback_option_default)
     code.equals(AudioLanguageOption.DEVICE, ignoreCase = true) ||
@@ -476,6 +479,7 @@ suspend fun getLanguageLabelForCode(code: String?): String = when {
         getString(Res.string.settings_playback_option_none)
     code.equals(SubtitleLanguageOption.FORCED, ignoreCase = true) ->
         getString(Res.string.settings_playback_option_forced)
+    code.equals(AudioLanguageOption.FP_AUTO, ignoreCase = true) -> AudioLanguageOption.FP_AUTO_LABEL // Fusion Pass
     code.equals(AudioLanguageOption.DEFAULT, ignoreCase = true) ->
         getString(Res.string.settings_playback_option_default)
     code.equals(AudioLanguageOption.DEVICE, ignoreCase = true) ||
@@ -492,6 +496,7 @@ fun resolvePreferredAudioLanguageTargets(
     secondaryPreferredAudioLanguage: String?,
     deviceLanguages: List<String>,
     contentOriginalLanguage: String? = null,
+    isAnime: Boolean = false, // Fusion Pass
 ): List<String> {
     fun normalize(language: String?): String? {
         val normalized = normalizeLanguageCode(language)
@@ -510,6 +515,10 @@ fun resolvePreferredAudioLanguageTargets(
     val primary = normalizeLanguageCode(preferredAudioLanguage) ?: AudioLanguageOption.DEVICE
 
     return when (primary) {
+        AudioLanguageOption.FP_AUTO -> listOfNotNull(
+            "ja".takeIf { isAnime }, "en", normalize(secondaryPreferredAudioLanguage),
+        ).distinct() // Fusion Pass
+
         AudioLanguageOption.DEFAULT -> listOfNotNull(
             normalize(secondaryPreferredAudioLanguage),
         ).distinct()

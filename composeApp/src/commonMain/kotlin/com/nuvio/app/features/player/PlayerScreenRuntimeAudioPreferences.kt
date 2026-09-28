@@ -16,6 +16,7 @@ internal val PlayerScreenRuntime.preferredAudioLanguageTargets: List<String>
         secondaryPreferredAudioLanguage = playerSettingsUiState.secondaryPreferredAudioLanguage,
         deviceLanguages = DeviceLanguagePreferences.preferredLanguageCodes(),
         contentOriginalLanguage = contentLanguage,
+        isAnime = fpIsAnime, // Fusion Pass
     )
 
 internal data class AppliedAudioPreferences(

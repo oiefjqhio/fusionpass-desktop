@@ -498,6 +498,7 @@ private fun PlaybackSettingsSection(
                 SettingsNavigationRow(
                     title = stringResource(Res.string.settings_playback_preferred_audio_language),
                     description = when (preferredAudioLanguage) {
+                        AudioLanguageOption.FP_AUTO -> AudioLanguageOption.FP_AUTO_LABEL // Fusion Pass
                         AudioLanguageOption.DEFAULT -> stringResource(Res.string.settings_playback_option_default)
                         AudioLanguageOption.DEVICE -> stringResource(Res.string.settings_playback_option_device_language)
                         AudioLanguageOption.ORIGINAL -> stringResource(Res.string.settings_playback_option_original)
@@ -1332,6 +1333,7 @@ private fun PlaybackSettingsSection(
         LanguageSelectionDialog(
             title = stringResource(Res.string.settings_playback_preferred_audio_language),
             options = listOf(
+                LanguageSelectionOption(AudioLanguageOption.FP_AUTO, AudioLanguageOption.FP_AUTO_LABEL), // Fusion Pass
                 LanguageSelectionOption(AudioLanguageOption.DEFAULT, stringResource(Res.string.settings_playback_option_default)),
                 LanguageSelectionOption(AudioLanguageOption.DEVICE, stringResource(Res.string.settings_playback_option_device_language)),
                 LanguageSelectionOption(AudioLanguageOption.ORIGINAL, stringResource(Res.string.settings_playback_option_original), description = originalHint),

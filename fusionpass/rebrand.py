@@ -22,6 +22,8 @@ def edit(path, pairs):
     s = open(path, encoding='utf8').read()
     orig = s
     for a, b in pairs:
+        if a in b and b in s:
+            continue  # already applied; b extends a, so replacing again would repeat it
         if a not in s and b not in s:
             sys.exit(f'rebrand: anchor not found in {path}: {a[:80]!r} (upstream changed; update rebrand.py)')
         s = s.replace(a, b)
@@ -177,15 +179,57 @@ private data class PlaybackSearchRow(""", """    // Fusion Pass: pages removed f
 private data class PlaybackSearchRow("""),
 ])
 
-# 9. Audio defaults to English (owner: "we should be defaulting english always"). Nuvio defaults to the
-#    device language; on a Filipino-locale phone that falls back to the file's default track, which on
-#    dual-audio releases can be Spanish. A language the user picks in Settings still wins.
-P = f'{K}/features/player/PlayerSettingsRepository.kt'
+# 9. Audio and subtitles (owner decision 2026-09-28): by default English audio, or Japanese for anime, with English
+#    subtitles on. Nuvio defaults to the device language (Spanish on some dual-audio releases for Filipino-locale
+#    phones) and subtitles off. The default is a setting of its own ("Auto"); a language the user picks still wins.
+PL = f'{K}/features/player'
+P = f'{PL}/PlayerSettingsRepository.kt'
 edit(P, [
-    ('    val preferredAudioLanguage: String = AudioLanguageOption.DEVICE,', '    val preferredAudioLanguage: String = "en", // Fusion Pass: English by default'),
-    ('    private var preferredAudioLanguage = AudioLanguageOption.DEVICE\n', '    private var preferredAudioLanguage = "en" // Fusion Pass: English by default\n'),
-    ('        preferredAudioLanguage = AudioLanguageOption.DEVICE\n        secondaryPreferredAudioLanguage = null', '        preferredAudioLanguage = "en" // Fusion Pass\n        secondaryPreferredAudioLanguage = null'),
-    ('            normalizeLanguageCode(PlayerSettingsStorage.loadPreferredAudioLanguage())\n                ?: AudioLanguageOption.DEVICE', '            normalizeLanguageCode(PlayerSettingsStorage.loadPreferredAudioLanguage())\n                ?: "en" // Fusion Pass'),
+    ('    val preferredAudioLanguage: String = AudioLanguageOption.DEVICE,', '    val preferredAudioLanguage: String = AudioLanguageOption.FP_AUTO, // Fusion Pass'),
+    ('    private var preferredAudioLanguage = AudioLanguageOption.DEVICE\n', '    private var preferredAudioLanguage = AudioLanguageOption.FP_AUTO // Fusion Pass\n'),
+    ('        preferredAudioLanguage = AudioLanguageOption.DEVICE\n        secondaryPreferredAudioLanguage = null', '        preferredAudioLanguage = AudioLanguageOption.FP_AUTO // Fusion Pass\n        secondaryPreferredAudioLanguage = null'),
+    ('            normalizeLanguageCode(PlayerSettingsStorage.loadPreferredAudioLanguage())\n                ?: AudioLanguageOption.DEVICE', '            normalizeLanguageCode(PlayerSettingsStorage.loadPreferredAudioLanguage())\n                ?: AudioLanguageOption.FP_AUTO // Fusion Pass'),
+    ('    val preferredSubtitleLanguage: String = SubtitleLanguageOption.NONE,', '    val preferredSubtitleLanguage: String = "en", // Fusion Pass: English subtitles on'),
+    ('    private var preferredSubtitleLanguage = SubtitleLanguageOption.NONE\n', '    private var preferredSubtitleLanguage = "en" // Fusion Pass\n'),
+    ('        preferredSubtitleLanguage = SubtitleLanguageOption.NONE\n        secondaryPreferredSubtitleLanguage = null', '        preferredSubtitleLanguage = "en" // Fusion Pass\n        secondaryPreferredSubtitleLanguage = null'),
+    ('            normalizeLanguageCode(PlayerSettingsStorage.loadPreferredSubtitleLanguage())\n                ?: SubtitleLanguageOption.NONE', '            normalizeLanguageCode(PlayerSettingsStorage.loadPreferredSubtitleLanguage())\n                ?: "en" // Fusion Pass'),
+])
+edit(f'{PL}/PlayerLanguagePreferences.kt', [
+    ('    const val ORIGINAL = "original"\n}\n', '    const val ORIGINAL = "original"\n    const val FP_AUTO = "fpauto" // Fusion Pass: English, Japanese for anime\n    const val FP_AUTO_LABEL = "Auto (English, Japanese for anime)"\n}\n'),
+    ('    contentOriginalLanguage: String? = null,\n): List<String> {', '    contentOriginalLanguage: String? = null,\n    isAnime: Boolean = false, // Fusion Pass\n): List<String> {'),
+    ('    return when (primary) {\n        AudioLanguageOption.DEFAULT -> listOfNotNull(\n            normalize(secondaryPreferredAudioLanguage),\n        ).distinct()\n',
+     '    return when (primary) {\n        AudioLanguageOption.FP_AUTO -> listOfNotNull(\n            "ja".takeIf { isAnime }, "en", normalize(secondaryPreferredAudioLanguage),\n        ).distinct() // Fusion Pass\n\n        AudioLanguageOption.DEFAULT -> listOfNotNull(\n            normalize(secondaryPreferredAudioLanguage),\n        ).distinct()\n'),
+    ('    code.equals(AudioLanguageOption.DEFAULT, ignoreCase = true) ->\n        stringResource(Res.string.settings_playback_option_default)',
+     '    code.equals(AudioLanguageOption.FP_AUTO, ignoreCase = true) -> AudioLanguageOption.FP_AUTO_LABEL // Fusion Pass\n    code.equals(AudioLanguageOption.DEFAULT, ignoreCase = true) ->\n        stringResource(Res.string.settings_playback_option_default)'),
+    ('    code.equals(AudioLanguageOption.DEFAULT, ignoreCase = true) ->\n        getString(Res.string.settings_playback_option_default)',
+     '    code.equals(AudioLanguageOption.FP_AUTO, ignoreCase = true) -> AudioLanguageOption.FP_AUTO_LABEL // Fusion Pass\n    code.equals(AudioLanguageOption.DEFAULT, ignoreCase = true) ->\n        getString(Res.string.settings_playback_option_default)'),
+])
+edit(f'{PL}/PlayerScreenRuntimeAudioPreferences.kt', [
+    ('        contentOriginalLanguage = contentLanguage,\n    )\n', '        contentOriginalLanguage = contentLanguage,\n        isAnime = fpIsAnime, // Fusion Pass\n    )\n'),
+])
+FP_ANIME = '''package com.nuvio.app.features.player
+
+// Fusion Pass: anime detection for the "Auto" audio default (Japanese audio; English subtitles come
+// from the subtitle default). Written by fusionpass/rebrand.py.
+internal val PlayerScreenRuntime.fpIsAnime: Boolean
+    get() {
+        val ids = listOfNotNull(activeVideoId, parentMetaId)
+        if (ids.any { id -> listOf("kitsu:", "mal:", "anilist:", "anidb:").any { id.startsWith(it) } }) return true
+        val meta = listOfNotNull(metaUiState.meta, playerMeta).firstOrNull { it.id == parentMetaId }
+        val genres = meta?.genres.orEmpty()
+        if (genres.any { it.equals("anime", ignoreCase = true) }) return true
+        val animation = genres.any { it.equals("animation", ignoreCase = true) }
+        return animation && (meta?.country?.contains("Japan", ignoreCase = true) == true || contentLanguage == "ja")
+    }
+'''
+if not os.path.exists(f'{PL}/FusionPassAnimeAudio.kt') or open(f'{PL}/FusionPassAnimeAudio.kt', encoding='utf8').read() != FP_ANIME:
+    open(f'{PL}/FusionPassAnimeAudio.kt', 'w', encoding='utf8').write(FP_ANIME)
+    changed.append('features/player/FusionPassAnimeAudio.kt')
+edit(f'{K}/features/settings/PlaybackSettingsPage.kt', [
+    ('                        AudioLanguageOption.DEFAULT -> stringResource(Res.string.settings_playback_option_default)\n',
+     '                        AudioLanguageOption.FP_AUTO -> AudioLanguageOption.FP_AUTO_LABEL // Fusion Pass\n                        AudioLanguageOption.DEFAULT -> stringResource(Res.string.settings_playback_option_default)\n'),
+    ('            options = listOf(\n                LanguageSelectionOption(AudioLanguageOption.DEFAULT, stringResource(Res.string.settings_playback_option_default)),\n                LanguageSelectionOption(AudioLanguageOption.DEVICE,',
+     '            options = listOf(\n                LanguageSelectionOption(AudioLanguageOption.FP_AUTO, AudioLanguageOption.FP_AUTO_LABEL), // Fusion Pass\n                LanguageSelectionOption(AudioLanguageOption.DEFAULT, stringResource(Res.string.settings_playback_option_default)),\n                LanguageSelectionOption(AudioLanguageOption.DEVICE,'),
 ])
 
 print('rebrand: ok,', len(changed), 'changes')
