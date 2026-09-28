@@ -99,7 +99,7 @@ object AudioLanguageOption {
     const val DEFAULT = "default"
     const val DEVICE = "device"
     const val ORIGINAL = "original"
-    const val FP_AUTO = "fpauto" // Fusion Pass: English, Japanese for anime
+    const val FP_AUTO = "fpauto" // Fusion Pass: English, Japanese for anime (same value in every app: settings sync)
     const val FP_AUTO_LABEL = "Auto (English, Japanese for anime)"
 }
 

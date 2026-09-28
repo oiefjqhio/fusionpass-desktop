@@ -195,7 +195,7 @@ edit(P, [
     ('            normalizeLanguageCode(PlayerSettingsStorage.loadPreferredSubtitleLanguage())\n                ?: SubtitleLanguageOption.NONE', '            normalizeLanguageCode(PlayerSettingsStorage.loadPreferredSubtitleLanguage())\n                ?: "en" // Fusion Pass'),
 ])
 edit(f'{PL}/PlayerLanguagePreferences.kt', [
-    ('    const val ORIGINAL = "original"\n}\n', '    const val ORIGINAL = "original"\n    const val FP_AUTO = "fpauto" // Fusion Pass: English, Japanese for anime\n    const val FP_AUTO_LABEL = "Auto (English, Japanese for anime)"\n}\n'),
+    ('    const val ORIGINAL = "original"\n}\n', '    const val ORIGINAL = "original"\n    const val FP_AUTO = "fpauto" // Fusion Pass: English, Japanese for anime (same value in every app: settings sync)\n    const val FP_AUTO_LABEL = "Auto (English, Japanese for anime)"\n}\n'),
     ('    contentOriginalLanguage: String? = null,\n): List<String> {', '    contentOriginalLanguage: String? = null,\n    isAnime: Boolean = false, // Fusion Pass\n): List<String> {'),
     ('    return when (primary) {\n        AudioLanguageOption.DEFAULT -> listOfNotNull(\n            normalize(secondaryPreferredAudioLanguage),\n        ).distinct()\n',
      '    return when (primary) {\n        AudioLanguageOption.FP_AUTO -> listOfNotNull(\n            "ja".takeIf { isAnime }, "en", normalize(secondaryPreferredAudioLanguage),\n        ).distinct() // Fusion Pass\n\n        AudioLanguageOption.DEFAULT -> listOfNotNull(\n            normalize(secondaryPreferredAudioLanguage),\n        ).distinct()\n'),
