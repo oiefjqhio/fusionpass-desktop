@@ -357,20 +357,6 @@ private fun attributionItems(): List<AttributionItem> = listOf(
         link = SimklUrl,
     ),
     AttributionItem(
-        titleRes = Res.string.settings_licenses_attributions_premiumize_title,
-        bodyRes = Res.string.settings_licenses_attributions_premiumize_body,
-        logo = null,
-        logoUrl = PremiumizeCloudLibraryPosterUrl,
-        link = PremiumizeUrl,
-    ),
-    AttributionItem(
-        titleRes = Res.string.settings_licenses_attributions_torbox_title,
-        bodyRes = Res.string.settings_licenses_attributions_torbox_body,
-        logo = null,
-        logoUrl = cloudLibraryDisplayArtworkUrl(TorboxCloudLibraryPosterUrl),
-        link = TorboxUrl,
-    ),
-    AttributionItem(
         titleRes = Res.string.settings_licenses_attributions_mdblist_title,
         bodyRes = Res.string.settings_licenses_attributions_mdblist_body,
         logo = IntegrationLogo.MdbList,
@@ -419,3 +405,4 @@ internal fun platformLicenseItem(): LicenseItem =
             link = ApacheLicenseUrl,
         )
     }
+// Fusion Pass: no debrid credits or rows (rebrand.py)

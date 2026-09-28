@@ -169,7 +169,7 @@ edit(f'{K}/features/settings/SettingsSearch.kt', [
 }
 
 private data class PlaybackSearchRow(""", """    // Fusion Pass: pages removed from the settings root stay out of search too.
-    val hidden = setOf(SettingsPage.ContentDiscovery, SettingsPage.Integrations, SettingsPage.TraktAuthentication)
+    val hidden = setOf(SettingsPage.ContentDiscovery, SettingsPage.Integrations, SettingsPage.TraktAuthentication, SettingsPage.Debrid)
     return entries.filterNot { e ->
         val p = (e.target as? SettingsSearchTarget.Page)?.page
         p != null && (p in hidden || p.parentPage in hidden)
@@ -230,6 +230,30 @@ edit(f'{K}/features/settings/PlaybackSettingsPage.kt', [
      '                        AudioLanguageOption.FP_AUTO -> AudioLanguageOption.FP_AUTO_LABEL // Fusion Pass\n                        AudioLanguageOption.DEFAULT -> stringResource(Res.string.settings_playback_option_default)\n'),
     ('            options = listOf(\n                LanguageSelectionOption(AudioLanguageOption.DEFAULT, stringResource(Res.string.settings_playback_option_default)),\n                LanguageSelectionOption(AudioLanguageOption.DEVICE,',
      '            options = listOf(\n                LanguageSelectionOption(AudioLanguageOption.FP_AUTO, AudioLanguageOption.FP_AUTO_LABEL), // Fusion Pass\n                LanguageSelectionOption(AudioLanguageOption.DEFAULT, stringResource(Res.string.settings_playback_option_default)),\n                LanguageSelectionOption(AudioLanguageOption.DEVICE,'),
+])
+
+# No debrid names anywhere (owner 2026-09-28): the account's sources are ours, so the cloud library
+# (connect TorBox / Premiumize), their credits on Licenses, and the Connected Services page are gone.
+import re as _re
+def drop(path, pattern, what):
+    s = open(path, encoding='utf8').read()
+    n = _re.subn(pattern, '', s, flags=_re.S)
+    if n[1] == 0 and not _re.search(r'Fusion Pass: no debrid', s):
+        sys.exit(f'rebrand: {what} not found in {path} (upstream changed; update rebrand.py)')
+    if n[1]:
+        s = n[0]
+        if 'Fusion Pass: no debrid' not in s:
+            s = s.rstrip('\n') + '\n// Fusion Pass: no debrid credits or rows (rebrand.py)\n'
+        open(path, 'w', encoding='utf8').write(s)
+        changed.append(os.path.relpath(path, ROOT))
+drop(f'{K}/features/settings/LicensesAttributionsPage.kt',
+     r'    AttributionItem\(\n        titleRes = Res\.string\.settings_licenses_attributions_(?:premiumize|torbox)_title,.*?\n    \),\n',
+     'Premiumize/TorBox attribution items')
+drop(f'{K}/features/settings/SettingsSearch.kt',
+     r'        PlaybackSearchRow\("(?:premiumize|torbox)-attribution".*?\n', 'Premiumize/TorBox search rows')
+edit(f'{K}/features/library/LibraryScreen.kt', [
+    ('private fun LibrarySourceSwitch(\n    selectedMode: LibraryViewMode,\n    onModeSelected: (LibraryViewMode) -> Unit,\n    modifier: Modifier = Modifier,\n) {\n',
+     'private fun LibrarySourceSwitch(\n    selectedMode: LibraryViewMode,\n    onModeSelected: (LibraryViewMode) -> Unit,\n    modifier: Modifier = Modifier,\n) {\n    if (true) return // Fusion Pass: no cloud library (debrid accounts)\n'),
 ])
 
 print('rebrand: ok,', len(changed), 'changes')
