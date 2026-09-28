@@ -1036,7 +1036,12 @@ internal fun settingsSearchEntries(
         )
     }
 
-    return entries
+    // Fusion Pass: pages removed from the settings root stay out of search too.
+    val hidden = setOf(SettingsPage.ContentDiscovery, SettingsPage.Integrations, SettingsPage.TraktAuthentication)
+    return entries.filterNot { e ->
+        val p = (e.target as? SettingsSearchTarget.Page)?.page
+        p != null && (p in hidden || p.parentPage in hidden)
+    }
 }
 
 private data class PlaybackSearchRow(

@@ -5,15 +5,15 @@ private val isWindowsDesktop = System.getProperty("os.name")
     ?: false
 
 actual object AppFeaturePolicy {
-    actual val pluginsEnabled: Boolean = true
+    actual val pluginsEnabled: Boolean = false
     actual val downloadsEnabled: Boolean = true
     actual val notificationsEnabled: Boolean = false
-    actual val supportersContributorsPageEnabled: Boolean = true
-    actual val donationActionsEnabled: Boolean = true
+    actual val supportersContributorsPageEnabled: Boolean = false
+    actual val donationActionsEnabled: Boolean = false
     actual val donationProgressEnabled: Boolean = false
     actual val accountDeletionEnabled: Boolean = false
     actual val personalMediaAddonCopyEnabled: Boolean = false
-    actual val p2pEnabled: Boolean = true
+    actual val p2pEnabled: Boolean = false
     actual val externalPlayerSupported: Boolean = false
     actual val trailerPlaybackMode: TrailerPlaybackMode =
         if (isWindowsDesktop) TrailerPlaybackMode.EXTERNAL else TrailerPlaybackMode.IN_APP
@@ -22,5 +22,5 @@ actual object AppFeaturePolicy {
     actual val imdbRatingLogoEnabled: Boolean = true
     actual val mediaPlaybackForegroundServiceEnabled: Boolean = false
     actual val downloadForegroundServiceEnabled: Boolean = false
-    actual val customServerConnectionsEnabled: Boolean = true
+    actual val customServerConnectionsEnabled: Boolean = false
 }

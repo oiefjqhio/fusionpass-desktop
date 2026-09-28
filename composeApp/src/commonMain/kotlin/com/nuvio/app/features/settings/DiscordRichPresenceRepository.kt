@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 internal object DiscordRichPresenceRepository {
     val isSupported: Boolean
-        get() = DiscordRichPresencePlatform.isSupported
+        get() = false // Fusion Pass: no Discord presence
 
     private val _enabled = MutableStateFlow(false)
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()

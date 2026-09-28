@@ -1,0 +1,193 @@
+#!/usr/bin/env python3
+"""Apply the Fusion Pass branding and lock-down to a NuvioDesktop checkout (Windows, macOS, Linux).
+Idempotent: run after every upstream sync (git merge upstream/Dev, then this, commit).
+
+GPL-3.0: this fork's source stays public; README and About credit Nuvio.
+"""
+import glob, os, re, shutil, sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+APP = f'{ROOT}/composeApp/src'
+ICONS = f'{APP}/desktopMain/resources/icons'
+D = f'{APP}/desktopMain/kotlin/com/nuvio/app'
+WF = f'{ROOT}/.github/workflows/desktop-release.yml'
+G = f'{ROOT}/composeApp/build.gradle.kts'
+CR = f'{APP}/commonMain/composeResources'
+K = f'{APP}/commonMain/kotlin/com/nuvio/app'
+OUT = f'{ROOT}/fusionpass/brand/out'
+changed = []
+
+
+def edit(path, pairs):
+    s = open(path, encoding='utf8').read()
+    orig = s
+    for a, b in pairs:
+        if a not in s and b not in s:
+            sys.exit(f'rebrand: anchor not found in {path}: {a[:80]!r} (upstream changed; update rebrand.py)')
+        s = s.replace(a, b)
+    if s != orig:
+        open(path, 'w', encoding='utf8').write(s)
+        changed.append(os.path.relpath(path, ROOT))
+
+
+def put(src, dst_no_ext):
+    """Write our PNG at dst (.png), removing a same-named .webp so the resource is not duplicated."""
+    for old in glob.glob(dst_no_ext + '.webp'):
+        os.remove(old)
+        changed.append(os.path.relpath(old, ROOT) + ' (removed)')
+    dst = dst_no_ext + '.png'
+    if not os.path.exists(dst) or open(dst, 'rb').read() != open(src, 'rb').read():
+        shutil.copyfile(src, dst)
+        changed.append(os.path.relpath(dst, ROOT))
+
+
+
+def sub_all(path, pairs):
+    """Plain replace-all for names that repeat (asset names, paths); idempotent because the targets never contain the source."""
+    s = open(path, encoding='utf8').read()
+    n = s
+    for a, b in pairs:
+        n = n.replace(a, b)
+    if n != s:
+        open(path, 'w', encoding='utf8').write(n)
+        changed.append(os.path.relpath(path, ROOT))
+
+
+# 1. Icons: the installer/window icon in every format, and the in-app logos.
+DI = f'{OUT}/desktop'
+for base in ['nuvio-app-icon-transparent', 'app-icon-original-transparent']:
+    for ext, src in [('icns', 'app.icns'), ('ico', 'app.ico'), ('png', 'icon-512.png')]:
+        dst = f'{ICONS}/{base}.{ext}'
+        if open(dst, 'rb').read() != open(f'{DI}/{src}', 'rb').read():
+            shutil.copyfile(f'{DI}/{src}', dst)
+            changed.append(os.path.relpath(dst, ROOT))
+for f in glob.glob(f'{CR}/drawable/app_icon_*.png'):
+    put(f'{OUT}/app_icon_original.png', os.path.splitext(f)[0])
+for f in glob.glob(f'{CR}/drawable/app_logo_wordmark*.png'):
+    put(f'{OUT}/app_logo_wordmark.png', os.path.splitext(f)[0])
+
+# 2. Visible text: Nuvio -> Fusion Pass in every language.
+for path in glob.glob(f'{CR}/values*/strings.xml'):
+    s = open(path, encoding='utf8').read()
+    n = re.sub(r'(<(?:string|item)[^>]*>)([^<]*)(<)', lambda m: m.group(1) + m.group(2).replace('Nuvio', 'Fusion Pass') + m.group(3), s)
+    if n != s:
+        open(path, 'w', encoding='utf8').write(n)
+        changed.append(os.path.relpath(path, ROOT))
+
+# 3. Installer identity: our name, ids and upgrade code (a real Nuvio install is left alone),
+#    and the release file names (FusionPass-<OS>-<arch>-<version>.<ext>) in the build and workflow.
+edit(G, [
+    ('            packageName = "Nuvio"\n', '            packageName = "FusionPass"\n'),
+    ('            vendor = "Nuvio Media"\n', '            vendor = "Fusion Pass"\n'),
+    ('val windowsMsiUpgradeUuid = "395990ee-9b8a-3548-922c-e7a23a495b8d"', 'val windowsMsiUpgradeUuid = "6f1c2a4e-3d7b-4b8e-9a51-2c0f5e8d7b31" // Fusion Pass'),
+    ('                                    <string>nuvio</string>\n                                    <string>stremio</string>\n', '                                    <string>fusionpass</string>\n'),
+    ('                debMaintainer = "contact@nuvio.tv"', '                debMaintainer = "support@fusionpass.shop"'),
+])
+sub_all(G, [('com.nuvio.media.desktop', 'shop.fusionpass.desktop'), ('menuGroup = "Nuvio"', 'menuGroup = "Fusion Pass"'), ('"Nuvio-', '"FusionPass-')])
+sub_all(WF, [
+    ('com.nuvio.media.desktop', 'shop.fusionpass.desktop'),
+    ('/app/Nuvio/Nuvio"', '/app/FusionPass/FusionPass"'),
+    ('/app/Nuvio"', '/app/FusionPass"'),
+    ('/bin/Nuvio"', '/bin/FusionPass"'),
+    ('Nuvio-Linux-', 'FusionPass-Linux-'), ('Nuvio-Windows-', 'FusionPass-Windows-'), ('Nuvio-macOS-', 'FusionPass-macOS-'),
+])
+
+# 3b. No crash reporting (no Sentry project; nothing leaves the user's machine) and no Trakt keys
+#     (tracking is hidden): the upstream workflow requires both, so drop those requirements and uploads.
+sub_all(WF, [
+    ('            SENTRY_AUTH_TOKEN\n            SENTRY_DESKTOP_DSN\n', ''),
+    ('            TRAKT_CLIENT_ID\n            TRAKT_CLIENT_SECRET\n', ''),
+    ('            :desktopSentry:sentryUploadSourceBundleJava \\\n', ''),
+    ('            :desktopSentry:sentryUploadSourceBundleJava `\n', ''),
+])
+
+# 4. Update channel: this fork's releases.
+edit(f'{D}/features/updater/AppUpdaterPlatform.desktop.kt', [
+    ('        owner = "NuvioMedia",\n        repo = "NuvioDesktop",', '        owner = "oiefjqhio",\n        repo = "fusionpass-desktop",'),
+])
+
+# 5. Lock-down: never P2P (owner rule), no plugins, no donation or supporter pages for another
+#    project under our name, no custom servers.
+edit(f'{D}/core/build/AppFeaturePolicy.desktop.kt', [
+    ('actual val pluginsEnabled: Boolean = true', 'actual val pluginsEnabled: Boolean = false'),
+    ('actual val supportersContributorsPageEnabled: Boolean = true', 'actual val supportersContributorsPageEnabled: Boolean = false'),
+    ('actual val donationActionsEnabled: Boolean = true', 'actual val donationActionsEnabled: Boolean = false'),
+    ('actual val p2pEnabled: Boolean = true', 'actual val p2pEnabled: Boolean = false'),
+    ('actual val customServerConnectionsEnabled: Boolean = true', 'actual val customServerConnectionsEnabled: Boolean = false'),
+])
+
+# 6. Window title, own data folders (never shares a real Nuvio install's data), no Discord presence
+#    (it would announce "Nuvio" under Nuvio's Discord app).
+edit(f'{D}/Main.kt', [('title = if (smokePlayerUrl == null) "Nuvio" else', 'title = if (smokePlayerUrl == null) "Fusion Pass" else')])
+sub_all(f'{D}/core/storage/DesktopStorage.kt', [
+    ('"Library/Application Support/Nuvio"', '"Library/Application Support/Fusion Pass"'),
+    ('"Library/Caches/Nuvio"', '"Library/Caches/Fusion Pass"'),
+    ('.resolve("Nuvio/Cache")', '.resolve("Fusion Pass/Cache")'),
+    ('.resolve("Nuvio")', '.resolve("Fusion Pass")'),
+    ('.resolve("nuvio")', '.resolve("fusionpass")'),
+])
+edit(f'{K}/features/settings/DiscordRichPresenceRepository.kt', [
+    ('        get() = DiscordRichPresencePlatform.isSupported', '        get() = false // Fusion Pass: no Discord presence'),
+])
+edit(f'{D}/core/auth/DeviceSessionRegistration.desktop.kt', [('        clientName = "Nuvio Desktop",', '        clientName = "Fusion Pass Desktop",')])
+
+# 5. The account comes fully configured: no addon manager, no debrid/metadata integrations, no
+#    tracking services (Trakt/Simkl need our own API apps; owner chose to hide them).
+def drop_row(path, handler, label):
+    """Remove the settings row whose onClick is `handler` (and the divider above it)."""
+    s = open(path, encoding='utf8').read()
+    marker = f'// Fusion Pass: {label} row removed'
+    pat = re.compile(r'\n([ ]*)SettingsGroupDivider\(isTablet = isTablet\)\n\1SettingsNavigationRow\(\n(?:\1    .*\n)*?\1    onClick = ' + handler + r',\n\1\)')
+    n, c = pat.subn(lambda m: '\n' + m.group(1) + marker, s)
+    if not c and marker not in s:
+        sys.exit(f'rebrand: settings row {handler} not found in {path} (upstream changed; update rebrand.py)')
+    if n != s:
+        open(path, 'w', encoding='utf8').write(n)
+        changed.append(os.path.relpath(path, ROOT))
+
+
+SR = f'{K}/features/settings/SettingsRootPage.kt'
+drop_row(SR, 'onContentDiscoveryClick', 'content discovery')
+drop_row(SR, 'onIntegrationsClick', 'integrations')
+drop_row(SR, 'onTrackingClick', 'tracking services')
+
+# 6. Our own links.
+edit(f'{K}/features/settings/SettingsRootPage.kt', [('"https://nuvio.tv/privacy-policy"', '"https://fusionpass.shop/privacy"')])
+edit(f'{K}/features/auth/AuthScreen.kt', [('"https://nuvio.tv/terms"', '"https://fusionpass.shop/terms"')])
+edit(f'{K}/core/auth/DeviceLinkAuthRepository.kt', [('"https://nuvio.tv/link"', '"https://sync.fusionpass.shop/link"')])
+
+# 7. Names a user can see outside the string resources.
+edit(f'{K}/features/settings/TrackingProviderCards.kt', [('    NUVIO("Nuvio"),', '    NUVIO("Fusion Pass"),')])
+edit(f'{K}/features/library/LibraryRepository.kt', [('DEFAULT_LOCAL_LIBRARY_TAB_TITLE = "Nuvio Library"', 'DEFAULT_LOCAL_LIBRARY_TAB_TITLE = "Library"')])
+
+# 8. No tracking services (Trakt/Simkl need our own API apps; owner chose to hide them). Library and
+#    watch progress stay on our sync server. Settings search must not reopen any hidden page.
+edit(f'{K}/features/settings/SettingsSearch.kt', [
+    ("""    return entries
+}
+
+private data class PlaybackSearchRow(""", """    // Fusion Pass: pages removed from the settings root stay out of search too.
+    val hidden = setOf(SettingsPage.ContentDiscovery, SettingsPage.Integrations, SettingsPage.TraktAuthentication)
+    return entries.filterNot { e ->
+        val p = (e.target as? SettingsSearchTarget.Page)?.page
+        p != null && (p in hidden || p.parentPage in hidden)
+    }
+}
+
+private data class PlaybackSearchRow("""),
+])
+
+# 9. Audio defaults to English (owner: "we should be defaulting english always"). Nuvio defaults to the
+#    device language; on a Filipino-locale phone that falls back to the file's default track, which on
+#    dual-audio releases can be Spanish. A language the user picks in Settings still wins.
+P = f'{K}/features/player/PlayerSettingsRepository.kt'
+edit(P, [
+    ('    val preferredAudioLanguage: String = AudioLanguageOption.DEVICE,', '    val preferredAudioLanguage: String = "en", // Fusion Pass: English by default'),
+    ('    private var preferredAudioLanguage = AudioLanguageOption.DEVICE\n', '    private var preferredAudioLanguage = "en" // Fusion Pass: English by default\n'),
+    ('        preferredAudioLanguage = AudioLanguageOption.DEVICE\n        secondaryPreferredAudioLanguage = null', '        preferredAudioLanguage = "en" // Fusion Pass\n        secondaryPreferredAudioLanguage = null'),
+    ('            normalizeLanguageCode(PlayerSettingsStorage.loadPreferredAudioLanguage())\n                ?: AudioLanguageOption.DEVICE', '            normalizeLanguageCode(PlayerSettingsStorage.loadPreferredAudioLanguage())\n                ?: "en" // Fusion Pass'),
+])
+
+print('rebrand: ok,', len(changed), 'changes')
+for c in changed[:60]:
+    print('  ', c)
