@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Publish a Fusion Pass desktop release from a successful "Build Desktop Release" build-only run.
 #   GH_TOKEN=... fusionpass/publish-release.sh <run-id> <fp-rev>
-# Tag: v<upstream version>-fp<rev>. Windows MSI + macOS DMGs (Linux is not shipped yet).
+# Tag: v<upstream version>-fp<rev>. Windows MSI + macOS DMGs.
 set -euo pipefail
 RUN="${1:?run id}"; REV="${2:?fusion pass revision}"; REPO=oiefjqhio/fusionpass-desktop
 dir=$(mktemp -d); trap 'rm -rf "$dir"' EXIT
