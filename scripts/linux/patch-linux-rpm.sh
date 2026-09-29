@@ -81,7 +81,7 @@ if [[ "$license" == "(none)" || -z "$license" ]]; then
     license="Proprietary"
 fi
 if [[ "$vendor" == "(none)" || -z "$vendor" ]]; then
-    vendor="Nuvio Media"
+    vendor="Fusion Pass"
 fi
 if [[ "$summary" == "(none)" || -z "$summary" ]]; then
     summary="Fusion Pass"

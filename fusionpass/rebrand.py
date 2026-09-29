@@ -282,7 +282,10 @@ edit(f'{L}/build-appimage.sh', [
     ('executable_path="$here/bin/Nuvio"\nif [[ ! -x "$executable_path" ]]; then\n    executable_path="$here/bin/nuvio"',
      'executable_path="$here/bin/FusionPass"\nif [[ ! -x "$executable_path" ]]; then\n    executable_path="$here/bin/fusionpass"'),
 ])
-edit(f'{L}/patch-linux-rpm.sh', [('    summary="Nuvio"', '    summary="Fusion Pass"')])
+edit(f'{L}/patch-linux-rpm.sh', [('    summary="Nuvio"', '    summary="Fusion Pass"'), ('    vendor="Nuvio Media"', '    vendor="Fusion Pass"')])
+# The package checks expect our maintainer and vendor (set in build.gradle.kts, section 3).
+edit(f'{L}/verify-linux-deb.sh', [('expected_maintainer="Nuvio Media <contact@nuvio.tv>"', 'expected_maintainer="Fusion Pass <support@fusionpass.shop>"')])
+edit(f'{L}/verify-linux-rpm.sh', [('if [[ "$vendor" != "Nuvio Media" ]]; then', 'if [[ "$vendor" != "Fusion Pass" ]]; then'), ('    echo "Expected: \'Nuvio Media\'" >&2', '    echo "Expected: \'Fusion Pass\'" >&2')])
 edit(WF, [
     ("    name: Linux x64 - Flatpak\n    if: inputs.mode != 'dry-run' && (inputs.target == 'all' || inputs.target == 'linux')",
      "    name: Linux x64 - Flatpak\n    if: false # Fusion Pass: no Flatpak"),
