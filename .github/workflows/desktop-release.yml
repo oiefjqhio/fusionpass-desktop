@@ -578,7 +578,7 @@ jobs:
 
   linux_flatpak:
     name: Linux x64 - Flatpak
-    if: inputs.mode != 'dry-run' && (inputs.target == 'all' || inputs.target == 'linux')
+    if: false # Fusion Pass: no Flatpak
     needs: metadata
     runs-on: ubuntu-latest
     environment: desktop-release
@@ -933,7 +933,7 @@ jobs:
           update_information="gh-releases-zsync|${repo_owner}|${repo_name}|latest|FusionPass-Linux-x86_64-*.AppImage.zsync"
 
           export APPIMAGETOOL="${appimagetool_path}"
-          export APPIMAGE_WEBSITE_URL="https://github.com/NuvioMedia/NuvioDesktop"
+          export APPIMAGE_WEBSITE_URL="https://fusionpass.shop"
 
           if [[ "${{ inputs.mode }}" == "publish" ]]; then
             export UPDATE_INFORMATION="${update_information}"
@@ -1015,7 +1015,6 @@ jobs:
       - metadata
       - macos
       - windows
-      - linux_flatpak
       - linux_deb
       - linux_rpm
       - linux_appimage

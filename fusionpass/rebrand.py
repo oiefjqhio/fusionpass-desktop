@@ -256,6 +256,40 @@ edit(f'{K}/features/library/LibraryScreen.kt', [
      'private fun LibrarySourceSwitch(\n    selectedMode: LibraryViewMode,\n    onModeSelected: (LibraryViewMode) -> Unit,\n    modifier: Modifier = Modifier,\n) {\n    if (true) return // Fusion Pass: no cloud library (debrid accounts)\n'),
 ])
 
+# 12. Linux (owner 2026-09-29): DEB, RPM and AppImage under our name; no Flatpak (sandboxed, cannot
+#     self-update, and its AppStream file is all upstream branding). jpackage installs to
+#     /opt/fusionpass with the launcher bin/FusionPass and icon lib/FusionPass.png (packageName).
+L = f'{ROOT}/scripts/linux'
+edit(f'{L}/configure-desktop-runtime.sh', [
+    ('    SENTRY_AUTH_TOKEN\n    SENTRY_DESKTOP_DSN\n', ''),
+    ('    TRAKT_CLIENT_ID\n    TRAKT_CLIENT_SECRET\n', ''),
+])
+edit(f'{L}/linux-shortcut-definition.sh', [
+    ('NUVIO_LINUX_SHORTCUT_RELATIVE_PATH="usr/share/applications/nuvio.desktop"', 'NUVIO_LINUX_SHORTCUT_RELATIVE_PATH="usr/share/applications/fusionpass.desktop"'),
+    ('NUVIO_LINUX_SHORTCUT_NAME="Nuvio"', 'NUVIO_LINUX_SHORTCUT_NAME="Fusion Pass"'),
+    ('NUVIO_LINUX_SHORTCUT_COMMENT="Nuvio Media Player"', 'NUVIO_LINUX_SHORTCUT_COMMENT="Movies, series and anime"'),
+    ('NUVIO_LINUX_SHORTCUT_MIME_TYPES="x-scheme-handler/nuvio;x-scheme-handler/stremio;"', 'NUVIO_LINUX_SHORTCUT_MIME_TYPES="x-scheme-handler/fusionpass;"'),
+    ('"/opt/nuvio/bin/Nuvio %u" "/opt/nuvio/lib/Nuvio.png"', '"/opt/fusionpass/bin/FusionPass %u" "/opt/fusionpass/lib/FusionPass.png"'),
+])
+# AppImage: file names without the space in "Fusion Pass"; the menu name stays in Name=.
+edit(f'{L}/build-appimage.sh', [
+    ('app_dir="$work_dir/Nuvio.AppDir"', 'app_dir="$work_dir/FusionPass.AppDir"'),
+    ('desktop_file="$app_dir/${NUVIO_LINUX_SHORTCUT_NAME}.desktop"\nnuvio_linux_write_desktop_entry_file "$desktop_file" "AppRun %u" "$NUVIO_LINUX_SHORTCUT_NAME"',
+     'desktop_file="$app_dir/fusionpass.desktop"\nnuvio_linux_write_desktop_entry_file "$desktop_file" "AppRun %u" "fusionpass"'),
+    ('icon_source="$app_dir/lib/Nuvio.png"', 'icon_source="$app_dir/lib/FusionPass.png"'),
+    ('cp "$icon_source" "$app_dir/${NUVIO_LINUX_SHORTCUT_NAME}.png"\nln -sf "${NUVIO_LINUX_SHORTCUT_NAME}.png" "$app_dir/.DirIcon"',
+     'cp "$icon_source" "$app_dir/fusionpass.png"\nln -sf "fusionpass.png" "$app_dir/.DirIcon"'),
+    ('executable_path="$here/bin/Nuvio"\nif [[ ! -x "$executable_path" ]]; then\n    executable_path="$here/bin/nuvio"',
+     'executable_path="$here/bin/FusionPass"\nif [[ ! -x "$executable_path" ]]; then\n    executable_path="$here/bin/fusionpass"'),
+])
+edit(f'{L}/patch-linux-rpm.sh', [('    summary="Nuvio"', '    summary="Fusion Pass"')])
+edit(WF, [
+    ("    name: Linux x64 - Flatpak\n    if: inputs.mode != 'dry-run' && (inputs.target == 'all' || inputs.target == 'linux')",
+     "    name: Linux x64 - Flatpak\n    if: false # Fusion Pass: no Flatpak"),
+    ('      - linux_flatpak\n      - linux_deb', '      - linux_deb'),
+    ('APPIMAGE_WEBSITE_URL="https://github.com/NuvioMedia/NuvioDesktop"', 'APPIMAGE_WEBSITE_URL="https://fusionpass.shop"'),
+])
+
 print('rebrand: ok,', len(changed), 'changes')
 for c in changed[:60]:
     print('  ', c)

@@ -84,7 +84,7 @@ if [[ "$vendor" == "(none)" || -z "$vendor" ]]; then
     vendor="Nuvio Media"
 fi
 if [[ "$summary" == "(none)" || -z "$summary" ]]; then
-    summary="Nuvio"
+    summary="Fusion Pass"
 fi
 if [[ "$url" == "(none)" ]]; then
     url=""
