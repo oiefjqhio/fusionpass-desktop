@@ -293,6 +293,9 @@ edit(WF, [
     ('APPIMAGE_WEBSITE_URL="https://github.com/NuvioMedia/NuvioDesktop"', 'APPIMAGE_WEBSITE_URL="https://fusionpass.shop"'),
 ])
 
+# In-app updates: compare the -fp<N> revision numerically (code review 2026-09-29, report 22 F2).
+edit(f'{K}/features/updater/VersionUtils.kt', [('    private fun comparePrereleaseIdentifier(left: String, right: String): Int {\n', '    private fun comparePrereleaseIdentifier(left: String, right: String): Int {\n        // Fusion Pass: tags end in -fp<N>. Compare that revision as a number, or "fp10" sorts below\n        // "fp9" and every device stops updating at fp9 (code review 2026-09-29, report 22 F2).\n        val fpRev = Regex("^(.*?)fp(\\\\d+)$")\n        val fpLeft = fpRev.matchEntire(left)\n        val fpRight = fpRev.matchEntire(right)\n        if (fpLeft != null && fpRight != null && fpLeft.groupValues[1] == fpRight.groupValues[1]) {\n            return compareValues(fpLeft.groupValues[2].toLong(), fpRight.groupValues[2].toLong())\n        }\n')])
+
 print('rebrand: ok,', len(changed), 'changes')
 for c in changed[:60]:
     print('  ', c)
