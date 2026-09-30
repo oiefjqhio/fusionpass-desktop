@@ -457,6 +457,8 @@ fun jpackageCompatibleVersion(version: String): String {
         numbers += 0
     }
     numbers[0] = numbers[0].coerceAtLeast(1)
+    // Fusion Pass: -fp<N> rides in the third number (26 -> 2603), so each revision is a newer package.
+    Regex("-fp(\\d{1,2})$").find(version)?.let { numbers[2] = numbers[2] * 100 + it.groupValues[1].toInt() }
     return numbers.joinToString(".")
 }
 
@@ -1346,6 +1348,7 @@ compose.desktop {
                 "java.instrument",
                 "java.management",
                 "java.net.http",
+                "jdk.crypto.ec", // Fusion Pass: Ed25519 update signatures
                 "jdk.httpserver",
                 "jdk.unsupported",
             )

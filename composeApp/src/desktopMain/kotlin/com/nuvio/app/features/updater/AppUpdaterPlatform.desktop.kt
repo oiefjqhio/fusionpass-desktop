@@ -130,6 +130,17 @@ actual object AppUpdaterPlatform {
                     tempFile.copyTo(destination, overwrite = true)
                     tempFile.delete()
                 }
+                // Fusion Pass: install nothing that is not signed with our update key.
+                val signature = runCatching {
+                    desktopUpdaterHttpClient.send(
+                        HttpRequest.newBuilder().uri(URI("$assetUrl.sig")).GET().build(),
+                        HttpResponse.BodyHandlers.ofString(),
+                    ).takeIf { it.statusCode() in 200..299 }?.body()
+                }.getOrNull()
+                if (signature == null || !fpUpdateSignatureValid(destination, signature)) {
+                    destination.delete()
+                    error("This update is not signed by Fusion Pass, so it was not installed.")
+                }
                 destination.absolutePath
             } catch (t: Throwable) {
                 if (tempFile.exists()) tempFile.delete()
@@ -234,6 +245,29 @@ private fun desktopArchitectureFragments(): List<String> {
         else -> emptyList()
     }
 }
+
+// Fusion Pass: public half of the release signing key (see fusionpass/rebrand.py).
+internal const val FP_UPDATE_PUBLIC_KEY = "MCowBQYDK2VwAyEAQ0njN+QpUGwkF+71bUVzKI4Ip9avt1Y5Ow3IEZ1nVQ8="
+
+// Ed25519 signature (base64) over the file's SHA-256 digest; the file is hashed in a stream.
+internal fun fpUpdateSignatureValid(file: File, signatureBase64: String, publicKeyBase64: String = FP_UPDATE_PUBLIC_KEY): Boolean =
+    runCatching {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        val key = java.security.KeyFactory.getInstance("Ed25519")
+            .generatePublic(java.security.spec.X509EncodedKeySpec(java.util.Base64.getDecoder().decode(publicKeyBase64)))
+        val verifier = java.security.Signature.getInstance("Ed25519")
+        verifier.initVerify(key)
+        verifier.update(digest.digest())
+        verifier.verify(java.util.Base64.getDecoder().decode(signatureBase64.trim()))
+    }.getOrDefault(false)
 
 internal fun windowsInstallerCommand(updateFile: File): List<String> {
     if (!updateFile.extension.equals("msi", ignoreCase = true)) {

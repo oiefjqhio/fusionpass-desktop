@@ -296,6 +296,76 @@ edit(WF, [
 # In-app updates: compare the -fp<N> revision numerically (code review 2026-09-29, report 22 F2).
 edit(f'{K}/features/updater/VersionUtils.kt', [('    private fun comparePrereleaseIdentifier(left: String, right: String): Int {\n', '    private fun comparePrereleaseIdentifier(left: String, right: String): Int {\n        // Fusion Pass: tags end in -fp<N>. Compare that revision as a number, or "fp10" sorts below\n        // "fp9" and every device stops updating at fp9 (code review 2026-09-29, report 22 F2).\n        val fpRev = Regex("^(.*?)fp(\\\\d+)$")\n        val fpLeft = fpRev.matchEntire(left)\n        val fpRight = fpRev.matchEntire(right)\n        if (fpLeft != null && fpRight != null && fpLeft.groupValues[1] == fpRight.groupValues[1]) {\n            return compareValues(fpLeft.groupValues[2].toLong(), fpRight.groupValues[2].toLong())\n        }\n')])
 
+# Signed updates (owner 2026-09-30, code review 2026-09-29 report 22 F1): every release file has a
+# <file>.sig next to it, an Ed25519 signature over the file's SHA-256, made by publish-release.sh
+# with /root/.fusionpass-desktop-update-ed25519.pem on the dev box (off GitHub; offsite copy in the
+# storage box fusionpass-app-keys/). The updater refuses a download whose signature does not verify.
+# Ed25519 lives in jdk.crypto.ec on Java 17, which the bundled runtime did not include.
+FP_UPDATE_KEY = 'MCowBQYDK2VwAyEAQ0njN+QpUGwkF+71bUVzKI4Ip9avt1Y5Ow3IEZ1nVQ8='
+edit(G, [('                "java.net.http",\n                "jdk.httpserver",\n',
+          '                "java.net.http",\n                "jdk.crypto.ec", // Fusion Pass: Ed25519 update signatures\n                "jdk.httpserver",\n')])
+FP_VERIFY_CALL = """                // Fusion Pass: install nothing that is not signed with our update key.
+                val signature = runCatching {
+                    desktopUpdaterHttpClient.send(
+                        HttpRequest.newBuilder().uri(URI("$assetUrl.sig")).GET().build(),
+                        HttpResponse.BodyHandlers.ofString(),
+                    ).takeIf { it.statusCode() in 200..299 }?.body()
+                }.getOrNull()
+                if (signature == null || !fpUpdateSignatureValid(destination, signature)) {
+                    destination.delete()
+                    error("This update is not signed by Fusion Pass, so it was not installed.")
+                }
+"""
+FP_VERIFY_FUN = """// Fusion Pass: public half of the release signing key (see fusionpass/rebrand.py).
+internal const val FP_UPDATE_PUBLIC_KEY = "%s"
+
+// Ed25519 signature (base64) over the file's SHA-256 digest; the file is hashed in a stream.
+internal fun fpUpdateSignatureValid(file: File, signatureBase64: String, publicKeyBase64: String = FP_UPDATE_PUBLIC_KEY): Boolean =
+    runCatching {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        val key = java.security.KeyFactory.getInstance("Ed25519")
+            .generatePublic(java.security.spec.X509EncodedKeySpec(java.util.Base64.getDecoder().decode(publicKeyBase64)))
+        val verifier = java.security.Signature.getInstance("Ed25519")
+        verifier.initVerify(key)
+        verifier.update(digest.digest())
+        verifier.verify(java.util.Base64.getDecoder().decode(signatureBase64.trim()))
+    }.getOrDefault(false)
+
+""" % FP_UPDATE_KEY
+FP_RENAME = """                if (!tempFile.renameTo(destination)) {
+                    tempFile.copyTo(destination, overwrite = true)
+                    tempFile.delete()
+                }
+"""
+edit(f'{D}/features/updater/AppUpdaterPlatform.desktop.kt', [
+    (FP_RENAME + '                destination.absolutePath\n', FP_RENAME + FP_VERIFY_CALL + '                destination.absolutePath\n'),
+    ('internal fun windowsInstallerCommand(updateFile: File): List<String> {\n', FP_VERIFY_FUN + 'internal fun windowsInstallerCommand(updateFile: File): List<String> {\n'),
+])
+
+# Version stamping (report 22 F3/F7): the build-only run takes the fp revision, so the app reports
+# <upstream>-fp<N>, the artifacts are named with it, and one run builds every OS from one commit.
+# The installers' numeric version carries the revision too (0.1.26 + fp3 -> 0.1.2603), so an MSI of
+# a new revision upgrades the old one instead of being refused as the same version.
+edit(G, [('    numbers[0] = numbers[0].coerceAtLeast(1)\n    return numbers.joinToString(".")\n',
+          '    numbers[0] = numbers[0].coerceAtLeast(1)\n    // Fusion Pass: -fp<N> rides in the third number (26 -> 2603), so each revision is a newer package.\n    Regex("-fp(\\\\d{1,2})$").find(version)?.let { numbers[2] = numbers[2] * 100 + it.groupValues[1].toInt() }\n    return numbers.joinToString(".")\n')])
+edit(WF, [
+    ('      exclude_commits:\n        description: Optional comma-separated commit hashes to omit from the notes\n        required: false\n        type: string\n',
+     '      exclude_commits:\n        description: Optional comma-separated commit hashes to omit from the notes\n        required: false\n        type: string\n      fp_rev:\n        description: Fusion Pass revision (N in -fpN), stamped into the build\n        required: false\n        type: string\n'),
+    ('        run: ./scripts/release-metadata.sh "${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"\n',
+     '        run: | # Fusion Pass: -fp<rev> on the version\n          ./scripts/release-metadata.sh "${GITHUB_SHA}" > "${RUNNER_TEMP}/fp-meta.txt"\n          if [[ -n "${FP_REV}" ]]; then\n            [[ "${FP_REV}" =~ ^[0-9]{1,2}$ ]] || { echo "fp_rev must be 1-99" >&2; exit 1; }\n            sed -i -E "s/^(version|tag)=(.*)$/\\1=\\2-fp${FP_REV}/" "${RUNNER_TEMP}/fp-meta.txt"\n          fi\n          cat "${RUNNER_TEMP}/fp-meta.txt" >> "${GITHUB_OUTPUT}"\n'),
+    ('          VERSION_FIRST_PARENT: "true"\n', '          VERSION_FIRST_PARENT: "true"\n          FP_REV: ${{ inputs.fp_rev }}\n'),
+    ('      LOCAL_PROPERTIES_BASE64: ${{ secrets.NUVIO_DESKTOP_LOCAL_PROPERTIES_BASE64 }}\n',
+     '      LOCAL_PROPERTIES_BASE64: ${{ secrets.NUVIO_DESKTOP_LOCAL_PROPERTIES_BASE64 }}\n      NUVIO_DESKTOP_VERSION_NAME: ${{ needs.metadata.outputs.version }} # Fusion Pass\n'),
+])
+
 print('rebrand: ok,', len(changed), 'changes')
 for c in changed[:60]:
     print('  ', c)
