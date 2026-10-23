@@ -375,10 +375,8 @@ edit(f'{K}/core/network/ServerConfiguration.kt', [
 
 # Upstream 2026-10 requires an MDBList client id for its MDBList account sign-in; integrations are hidden in our
 # builds, so the release workflow must not refuse to build without it (the app falls back to an empty id).
-sub_all(WF, [("            NUVIO_SUPABASE_ANON_KEY
-            MDBLIST_CLIENT_ID
-          )", "            NUVIO_SUPABASE_ANON_KEY
-          )")])
+sub_all(WF, [('            NUVIO_SUPABASE_ANON_KEY\n            MDBLIST_CLIENT_ID\n          )',
+              '            NUVIO_SUPABASE_ANON_KEY\n          )')])
 
 print('rebrand: ok,', len(changed), 'changes')
 for c in changed[:60]:
