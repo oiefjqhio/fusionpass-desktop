@@ -252,8 +252,8 @@ drop(f'{K}/features/settings/LicensesAttributionsPage.kt',
 drop(f'{K}/features/settings/SettingsSearch.kt',
      r'        PlaybackSearchRow\("(?:premiumize|torbox)-attribution".*?\n', 'Premiumize/TorBox search rows')
 edit(f'{K}/features/library/LibraryScreen.kt', [
-    ('private fun LibrarySourceSwitch(\n    selectedMode: LibraryViewMode,\n    onModeSelected: (LibraryViewMode) -> Unit,\n    modifier: Modifier = Modifier,\n) {\n',
-     'private fun LibrarySourceSwitch(\n    selectedMode: LibraryViewMode,\n    onModeSelected: (LibraryViewMode) -> Unit,\n    modifier: Modifier = Modifier,\n) {\n    if (true) return // Fusion Pass: no cloud library (debrid accounts)\n'),
+    ('private fun LibrarySourceSwitch(\n    selectedMode: LibraryViewMode,\n    showServers: Boolean,\n    onModeSelected: (LibraryViewMode) -> Unit,\n    modifier: Modifier = Modifier,\n) {\n',
+     'private fun LibrarySourceSwitch(\n    selectedMode: LibraryViewMode,\n    showServers: Boolean,\n    onModeSelected: (LibraryViewMode) -> Unit,\n    modifier: Modifier = Modifier,\n) {\n    if (true) return // Fusion Pass: no cloud library (debrid accounts) or media servers\n'),
 ])
 
 # 12. Linux (owner 2026-09-29): DEB, RPM and AppImage under our name; no Flatpak (sandboxed, cannot
@@ -302,8 +302,8 @@ edit(f'{K}/features/updater/VersionUtils.kt', [('    private fun comparePrerelea
 # storage box fusionpass-app-keys/). The updater refuses a download whose signature does not verify.
 # Ed25519 lives in jdk.crypto.ec on Java 17, which the bundled runtime did not include.
 FP_UPDATE_KEY = 'MCowBQYDK2VwAyEAQ0njN+QpUGwkF+71bUVzKI4Ip9avt1Y5Ow3IEZ1nVQ8='
-edit(G, [('                "java.net.http",\n                "jdk.httpserver",\n',
-          '                "java.net.http",\n                "jdk.crypto.ec", // Fusion Pass: Ed25519 update signatures\n                "jdk.httpserver",\n')])
+edit(G, [('                "java.net.http",\n                "jdk.accessibility",\n                "jdk.httpserver",\n',
+          '                "java.net.http",\n                "jdk.accessibility",\n                "jdk.crypto.ec", // Fusion Pass: Ed25519 update signatures\n                "jdk.httpserver",\n')])
 FP_VERIFY_CALL = """                // Fusion Pass: install nothing that is not signed with our update key.
                 val signature = runCatching {
                     desktopUpdaterHttpClient.send(
@@ -364,6 +364,13 @@ edit(WF, [
     ('          VERSION_FIRST_PARENT: "true"\n', '          VERSION_FIRST_PARENT: "true"\n          FP_REV: ${{ inputs.fp_rev }}\n'),
     ('      LOCAL_PROPERTIES_BASE64: ${{ secrets.NUVIO_DESKTOP_LOCAL_PROPERTIES_BASE64 }}\n',
      '      LOCAL_PROPERTIES_BASE64: ${{ secrets.NUVIO_DESKTOP_LOCAL_PROPERTIES_BASE64 }}\n      NUVIO_DESKTOP_VERSION_NAME: ${{ needs.metadata.outputs.version }} # Fusion Pass\n'),
+])
+
+# Watch Party (upstream 2026-10): our sync server has no watch-party functions, so the built-in server
+# does not offer it (the settings row and the player button follow this flag).
+edit(f'{K}/core/network/ServerConfiguration.kt', [
+    ('        tvLogin = true,\n        watchParty = true,\n    ),\n    isCustom = false,',
+     '        tvLogin = true,\n        watchParty = false, // Fusion Pass: no watch-party functions on our sync server\n    ),\n    isCustom = false,'),
 ])
 
 print('rebrand: ok,', len(changed), 'changes')

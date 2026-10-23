@@ -11,7 +11,7 @@ const jobs = [
     [`ic_launcher-${d}.png`, 'icon', 48 * m, 48 * m],
     [`ic_launcher_round-${d}.png`, 'round', 48 * m, 48 * m],
     [`ic_launcher_foreground-${d}.png`, 'glyph', 108 * m, 108 * m],
-    [`ic_launcher_monochrome-${d}.png`, 'glyph', 108 * m, 108 * m],
+    [`ic_launcher_monochrome-${d}.png`, 'mono', 108 * m, 108 * m],
   ]),
   ['ic_splash_logo.png', 'splash', 288, 288],
   ['app_icon_original.png', 'icon', 256, 256],

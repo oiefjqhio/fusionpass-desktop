@@ -29,12 +29,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
+import com.nuvio.app.core.ui.isFullscreenActionActive
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
+import com.nuvio.app.core.ui.toggleFullscreenAction
 import com.nuvio.app.features.player.FullscreenPlayerDialog
 import com.nuvio.app.features.player.LockPlayerToLandscape
+import com.nuvio.app.features.player.PlayerEngineController
 import com.nuvio.app.features.trailer.TrailerPlaybackState
 import com.nuvio.app.features.trailer.TrailerPlayer
 import com.nuvio.app.features.trailer.TrailerPlaybackSource
@@ -72,9 +74,50 @@ fun TrailerPlayerPopup(
     val coroutineScope = rememberCoroutineScope()
     val playbackState = remember(playbackSource) { TrailerPlaybackState() }
     var fullscreen by remember { mutableStateOf(false) }
-    val toggleFullscreen = {
+    var releasing by remember { mutableStateOf(false) }
+    fun releasePlayerThen(
+        controller: PlayerEngineController? = playbackState.controller,
+        afterRelease: () -> Unit,
+    ) {
+        if (releasing) 
+            return
+
+        releasing = true
+        val finish = {
+            releasing = false
+            afterRelease()
+        }
+
+        if (controller == null) {
+            finish()
+        } else {
+            controller.pause()
+            controller.releaseBeforeNavigation(onReleased = finish, onReleaseFailed = { finish() })
+        }
+    }
+
+    val appFullscreen = isFullscreenActionActive()
+    var appFullscreenOnEnter by remember { mutableStateOf<Boolean?>(null) }
+    val restoreAppFullscreen = {
+        val initial = appFullscreenOnEnter
+        appFullscreenOnEnter = null
+        if (initial != null && initial != appFullscreen) 
+            toggleFullscreenAction()
+    }
+    val toggleFullscreen: () -> Unit = toggle@{
+        if (releasing) 
+            return@toggle
+        
+        val controller = playbackState.controller
+        val entering = !fullscreen
         playbackState.changePresentation()
-        fullscreen = !fullscreen
+        releasePlayerThen(controller) {
+            if (entering) 
+                appFullscreenOnEnter = appFullscreen 
+            else 
+                restoreAppFullscreen()
+            fullscreen = entering
+        }
     }
 
     val exitFullscreen = {
@@ -98,15 +141,23 @@ fun TrailerPlayerPopup(
                 modifier = Modifier.fillMaxSize(),
                 title = headerSubtitle.ifBlank { headerType },
                 onExitFullscreen = exitFullscreen,
+                onBack = {
+                    releasePlayerThen {
+                        restoreAppFullscreen()
+                        onDismiss()
+                    }
+                },
+                onToggleFullscreen = exitFullscreen,
             )
         }
         return
     }
 
     val dismissSheet: () -> Unit = {
-        playbackState.controller?.pause()
-        coroutineScope.launch {
-            dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss)
+        releasePlayerThen {
+            coroutineScope.launch {
+                dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss)
+            }
         }
     }
 
@@ -163,8 +214,6 @@ fun TrailerPlayerPopup(
                 }
             }
 
-            NuvioBottomSheetDivider()
-
             TrailerPlayer(
                 source = playbackSource,
                 state = playbackState,
@@ -175,6 +224,9 @@ fun TrailerPlayerPopup(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(18.dp))
                     .aspectRatio(16f / 9f),
+                onBack = dismissSheet,
+                onToggleFullscreen = toggleFullscreen,
+                onEscapeFullscreen = dismissSheet,
             )
         }
     }
