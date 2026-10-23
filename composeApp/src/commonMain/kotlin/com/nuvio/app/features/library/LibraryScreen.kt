@@ -744,6 +744,7 @@ private fun LibrarySourceSwitch(
     onModeSelected: (LibraryViewMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (true) return // Fusion Pass: no cloud library (debrid accounts) or media servers
     if (true) return // Fusion Pass: no cloud library (debrid accounts)
     Row(
         modifier = modifier.fillMaxWidth(),

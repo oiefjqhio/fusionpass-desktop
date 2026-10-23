@@ -55,7 +55,7 @@ internal fun officialConfiguration() = ServerConfiguration(
     capabilities = ServerCapabilities(
         emailPasswordAuth = true,
         tvLogin = true,
-        watchParty = true,
+        watchParty = false, // Fusion Pass: no watch-party functions on our sync server
     ),
     isCustom = false,
     fallbackBackendUrl = SupabaseConfig.FALLBACK_URL.trim().trimEnd('/').takeIf { it.isNotBlank() },

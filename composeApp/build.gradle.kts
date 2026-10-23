@@ -1291,6 +1291,7 @@ compose.desktop {
                 "java.management",
                 "java.net.http",
                 "jdk.accessibility",
+                "jdk.crypto.ec", // Fusion Pass: Ed25519 update signatures
                 "jdk.httpserver",
                 "jdk.unsupported",
             )

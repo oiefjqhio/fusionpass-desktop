@@ -34,7 +34,7 @@
     <string name="addons_configure">Διαμόρφωση πρόσθετου</string>
     <string name="addons_delete">Διαγραφή πρόσθετου</string>
     <string name="addons_delete_confirm_title">Διαγραφή πρόσθετου;</string>
-    <string name="addons_empty_subtitle">Προσθέστε μια διεύθυνση URL του μανιφέστου για να ξεκινήσετε τη φόρτωση καταλόγων, μεταδεδομένων, ροών ή υποτίτλων στο Nuvio.</string>
+    <string name="addons_empty_subtitle">Προσθέστε μια διεύθυνση URL του μανιφέστου για να ξεκινήσετε τη φόρτωση καταλόγων, μεταδεδομένων, ροών ή υποτίτλων στο Fusion Pass.</string>
     <string name="addons_empty_title">Δεν έχουν εγκατασταθεί πρόσθετα ακόμα.</string>
     <string name="addons_error_enter_url">Εισάγετε μια διεύθυνση URL πρόσθετου.</string>
     <string name="addons_input_placeholder">URL πρόσθετου</string>
@@ -1227,7 +1227,7 @@
     <string name="addon_already_installed">Αυτό το πρόσθετο είναι ήδη εγκατεστημένο.</string>
     <string name="addon_invalid_url">Εισάγετε μια έγκυρη διεύθυνση URL πρόσθετου</string>
     <string name="addon_load_manifest_failed">Αδυναμία φόρτωσης μανιφέστου</string>
-    <string name="app_brand_name">Nuvio</string>
+    <string name="app_brand_name">Fusion Pass</string>
     <string name="auth_account_deletion_failed">Η διαγραφή λογαριασμού απέτυχε</string>
     <string name="auth_sign_in_failed">Η σύνδεση απέτυχε</string>
     <string name="auth_sign_out_failed">Η αποσύνδεση απέτυχε</string>
@@ -2056,9 +2056,9 @@
     <string name="settings_licenses_attributions_exoplayer_title">AndroidX Media3 ExoPlayer 1.8.0</string>
     <string name="settings_licenses_attributions_imdb_body">Το Fusion Pass χρησιμοποιεί τα IMDb Non-Commercial Datasets, συμπεριλαμβανομένου του title.ratings.tsv.gz, για βαθμολογίες και αριθμό ψήφων IMDb. Πληροφορίες με ευγενική παραχώρηση του IMDb (https://www.imdb.com). Χρησιμοποιείται κατόπιν άδειας. Τα δεδομένα IMDb προορίζονται για προσωπική και μη εμπορική χρήση σύμφωνα με τους όρους του IMDb.</string>
     <string name="settings_licenses_attributions_imdb_title">Μη εμπορικά σύνολα δεδομένων IMDb</string>
-    <string name="settings_licenses_attributions_introdb_body">Το Nuvio χρησιμοποιεί το API του IntroDB για δεδομένα εισαγωγών, ανακεφαλαιώσεων, τίτλων τέλους και προεπισκόπησης χρονοσημάνσεων από την κοινότητα, τα οποία χρησιμοποιούνται από τα χειριστήρια παράλειψης. Το Nuvio δεν σχετίζεται με το IntroDB ούτε έχει την υποστήριξή του.</string>
+    <string name="settings_licenses_attributions_introdb_body">Το Fusion Pass χρησιμοποιεί το API του IntroDB για δεδομένα εισαγωγών, ανακεφαλαιώσεων, τίτλων τέλους και προεπισκόπησης χρονοσημάνσεων από την κοινότητα, τα οποία χρησιμοποιούνται από τα χειριστήρια παράλειψης. Το Fusion Pass δεν σχετίζεται με το IntroDB ούτε έχει την υποστήριξή του.</string>
     <string name="settings_licenses_attributions_introdb_title">IntroDB</string>
-    <string name="settings_licenses_attributions_mdblist_body">Το Nuvio χρησιμοποιεί το MDBList για βαθμολογίες, ιστορικό παρακολούθησης και παρακολούθηση αναπαραγωγής. Το Nuvio δεν σχετίζεται με το MDBList ούτε έχει την υποστήριξή του.</string>
+    <string name="settings_licenses_attributions_mdblist_body">Το Fusion Pass χρησιμοποιεί το MDBList για βαθμολογίες, ιστορικό παρακολούθησης και παρακολούθηση αναπαραγωγής. Το Fusion Pass δεν σχετίζεται με το MDBList ούτε έχει την υποστήριξή του.</string>
     <string name="settings_licenses_attributions_mdblist_title">MDBList</string>
     <string name="settings_licenses_attributions_mpvkit_body">Χρησιμοποιείται για αναπαραγωγή σε εκδόσεις iOS.</string>
     <string name="settings_licenses_attributions_mpvkit_license">Ο πηγαίος κώδικας του MPVKit μόνο είναι αδειοδοτημένος υπό LGPL v3.0. Τα πακέτα MPVKit, συμπεριλαμβανομένων των βιβλιοθηκών libmpv και FFmpeg, είναι επίσης αδειοδοτημένα υπό LGPL v3.0.</string>
